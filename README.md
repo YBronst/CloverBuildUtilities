@@ -33,7 +33,8 @@ xattr -dr com.apple.quarantine CloverAutoBuilder
   - Automatically runs buildme;
   - Cleans up /private/tmp/downloadBackup after completion.
 
-# CloverBuildTools Loads slowly loads open source tools that may have been lost during updates CloverBootloader
+# CloverBuildTools By chris1111 
+- Loads slowly loads open source tools that may have been lost during updates CloverBootloader
 
 # Usage:
 - Place it next to CloverBootloader and launch it and missing files will appear in `CloverBootloader/toolchain/tools/Download`

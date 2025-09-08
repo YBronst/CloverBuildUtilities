@@ -1,4 +1,5 @@
-# #================ CloverAutoBuilder v5 =================
+# CloverAutoBuilder v5
+
 # Purpose:
 - Fully rebuilds the CloverBootloader repository while
 - preserving files in toolchain/tools/download to avoid
@@ -32,10 +33,6 @@ What it does:
   - Builds BaseTools
   - Automatically runs buildme
   - Cleans up /private/tmp/downloadBackup after completion
-
-=======================================================
-
-
 
 
 # Homebrew (un)installer

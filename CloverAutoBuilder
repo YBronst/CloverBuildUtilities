@@ -1,0 +1,203 @@
+#!/bin/bash
+cat <<'EOF'
+
+================ CloverAutoBuilder v5 =================
+Purpose:
+  Fully rebuilds the CloverBootloader repository while
+  preserving files in toolchain/tools/download to avoid
+  re-downloading large archives (e.g., gcc-15.1.0.tar.xz).
+
+Usage:
+  1. Make the script executable:
+       chmod +x CloverAutoBuilder
+  2. Run the script:
+       ./CloverAutoBuilder
+
+What it does:
+  - Checks for Python (installs if needed)
+  - Creates a symlink for python if missing
+  - Updates pip and setuptools
+  - If CloverBootloader exists:
+       * Saves toolchain/tools/download to /private/tmp/downloadBackup
+       * Deletes the old repository
+  - Clones a fresh CloverBootloader from GitHub
+  - Restores saved files back into toolchain/tools/download
+    OR downloads CloverBuildTools.zip if no backup exists
+  - Checks for all required build tools
+  - Builds BaseTools
+  - Automatically runs buildme
+  - Cleans up /private/tmp/downloadBackup after completion
+
+=======================================================
+
+EOF
+
+# Pause for user to read
+read -n1 -rsp $'Press any key to continue...\n'
+
+set -euo pipefail
+
+# --- Logging ---
+say() { echo -e "\033[36m$*\033[0m"; }
+ok() { echo -e "\033[32m✔ $*\033[0m"; }
+warn() { echo -e "\033[33m⚠ $*\033[0m"; }
+err() { echo -e "\033[31m✘ $*\033[0m"; }
+
+# --- Variables ---
+WORKDIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$WORKDIR/CloverBootloader"
+PYTHON_MIN="3.13"
+PYTHON_PKG="3.13.7"
+CLOVER_REPO="https://github.com/CloverHackyColor/CloverBootloader.git"
+
+# Backup + download settings
+BACKUP_DIR="/private/tmp/downloadBackup"
+ZIP_URL="https://github.com/YBronst/CloverBuildTools/releases/download/V.1.0/CloverBuildTools.zip"
+
+say "=== Clover Compiler Builder Clean & Robust Version (Automated) ==="
+echo
+
+# --- Python check & setup ---
+PY_VER=""
+if command -v python3 >/dev/null 2>&1; then
+    PY_VER=$(python3 --version 2>/dev/null | awk '{print $2}')
+fi
+
+vercomp() {
+    set +e
+    local IFS=.
+    local i
+    local -a ver1=($1) ver2=($2)
+    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do ver1[i]=0; done
+    for ((i=0; i<${#ver2[@]}; i++)); do
+        [[ -z "${ver1[i]:-}" ]] && ver1[i]=0
+        [[ -z "${ver2[i]:-}" ]] && ver2[i]=0
+        if ((10#${ver1[i]} > 10#${ver2[i]})); then return 1; fi
+        if ((10#${ver1[i]} < 10#${ver2[i]})); then return 2; fi
+    done
+    return 0
+    set -e
+}
+
+need_python=false
+if [[ -z "$PY_VER" ]]; then
+    need_python=true
+else
+    vercomp "$PY_VER" "$PYTHON_MIN"
+    cmp_res=$?
+    if [[ $cmp_res -eq 2 ]]; then
+        need_python=true
+    fi
+fi
+
+if $need_python; then
+    warn "Python $PYTHON_MIN or later not found. Downloading and installing automatically..."
+    curl -sLq "https://www.python.org/ftp/python/$PYTHON_PKG/python-$PYTHON_PKG-macos11.pkg" -o python.pkg
+    sudo installer -pkg python.pkg -target /
+    rm -f python.pkg
+    if ! command -v python3 >/dev/null 2>&1; then
+        err "Python not installed. Interrupt."
+        exit 1
+    fi
+    PY_VER=$(python3 --version 2>/dev/null | awk '{print $2}')
+    vercomp "$PY_VER" "$PYTHON_MIN"
+    cmp_res=$?
+    if [[ $cmp_res -eq 2 ]]; then
+        err "Installed Python $PY_VER < required $PYTHON_MIN. Interrupt."
+        exit 1
+    fi
+fi
+ok "Python $PY_VER OK."
+
+# --- Create symlink if missing ---
+PY_BIN_DIR="/Library/Frameworks/Python.framework/Versions/$PYTHON_MIN/bin"
+if [[ ! -f "$PY_BIN_DIR/python" ]]; then
+    say "Creating Python symlink..."
+    sudo ln -s "$PY_BIN_DIR/python$PYTHON_MIN" "$PY_BIN_DIR/python"
+    ok "Python symlink created."
+fi
+
+# --- Install pip packages ---
+say "Installing/updating pip packages..."
+python3 -m ensurepip --upgrade
+python3 -m pip install --upgrade setuptools pip
+ok "pip and setuptools ready."
+
+# --- Backup downloads if exist ---
+if [[ -d "$REPO_DIR/toolchain/tools/download" && -n "$(ls -A "$REPO_DIR/toolchain/tools/download")" ]]; then
+    say "Backing up existing downloads to $BACKUP_DIR ..."
+    rm -rf "$BACKUP_DIR"
+    mkdir -p "$BACKUP_DIR"
+    cp -Rp "$REPO_DIR/toolchain/tools/download/"* "$BACKUP_DIR/"
+    ok "Downloads saved."
+else
+    warn "No existing downloads found."
+    rm -rf "$BACKUP_DIR"
+fi
+
+# --- Always fresh clone ---
+if [[ -d "$REPO_DIR" ]]; then
+    warn "Deleting existing CloverBootloader folder..."
+    rm -rf "$REPO_DIR"
+fi
+
+git clone --recurse-submodules "$CLOVER_REPO" "$REPO_DIR"
+ok "Fresh clone done."
+
+# --- Restore downloads or download fresh CloverBuildTools ---
+if [[ -d "$BACKUP_DIR" && -n "$(ls -A "$BACKUP_DIR")" ]]; then
+    say "Restoring downloads from backup..."
+    mkdir -p "$REPO_DIR/toolchain/tools/download"
+    cp -Rp "$BACKUP_DIR/"* "$REPO_DIR/toolchain/tools/download/"
+    ok "Downloads restored."
+    rm -rf "$BACKUP_DIR"
+else
+    warn "No backup found, fetching CloverBuildTools.zip..."
+    Temp="/private/tmp"
+    Tools="$Temp/CloverBuildTools"
+
+    mkdir -p "$Tools"
+    curl -L "$ZIP_URL" -o "$Temp/CloverBuildTools.zip" || { err "Download failed"; exit 1; }
+
+    say "Unpacking CloverBuildTools..."
+    ditto -x -k --sequesterRsrc --rsrc "$Temp/CloverBuildTools.zip" "$Temp" || { err "Unzip failed"; exit 1; }
+
+    mkdir -p "$REPO_DIR/toolchain/tools/download"
+    cp -Rp "$Tools/"* "$REPO_DIR/toolchain/tools/download/" || { err "Copy to target failed"; exit 1; }
+
+    rm -rf "$Temp/CloverBuildTools.zip" "$Tools"
+    ok "CloverBuildTools downloaded and unpacked."
+fi
+
+# --- Проверка наличия ключевых инструментов ---
+TOOLS_LIST=("binutils-2.45.tar.xz" "cctools-986.tar.gz" "gcc-15.1.0.tar.xz" \
+"gettext-0.22.4.tar.xz" "gmp-6.3.0.tar.xz" "isl-0.27.tar.xz" "mpc-1.3.1.tar.gz" \
+"mpfr-4.2.2.tar.xz" "nasm-2.16.01.tar.xz")
+
+MISSING=false
+for tool in "${TOOLS_LIST[@]}"; do
+    if [[ ! -f "$REPO_DIR/toolchain/tools/download/$tool" ]]; then
+        warn "Missing tool: $tool"
+        MISSING=true
+    fi
+done
+
+if $MISSING; then
+    warn "Some tools are missing. buildme will download them automatically during the build."
+else
+    ok "All CloverBuildTools are present."
+fi
+
+# --- Build BaseTools ---
+cd "$REPO_DIR"
+make -C BaseTools BUILD_CC=clang
+cd "$WORKDIR"
+
+# --- Final summary & auto-launch buildme ---
+say "=== Setup Complete ==="
+ok "Clover repository ready."
+ok "buildme is ready."
+
+cd "$REPO_DIR"
+say "Starting buildme automatically..."
+exec ./buildme

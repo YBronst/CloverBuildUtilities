@@ -26,3 +26,10 @@
   - Builds BaseTools
   - Automatically runs buildme
   - Cleans up /private/tmp/downloadBackup after completion
+  ========================================================
+  ============ CloverBuildTools By chris1111 =============
+  
+  # Quickly download missing tool files:
+  
+  # Usage:
+  1. Just place it next to Clover's folder and it will do the rest.

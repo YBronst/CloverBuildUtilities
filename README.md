@@ -1,10 +1,10 @@
-#================ CloverAutoBuilder v5 =================
-Purpose:
-  Fully rebuilds the CloverBootloader repository while
-  preserving files in toolchain/tools/download to avoid
-  re-downloading large archives (e.g., gcc-15.1.0.tar.xz).
+# #================ CloverAutoBuilder v5 =================
+# Purpose:
+- Fully rebuilds the CloverBootloader repository while
+- preserving files in toolchain/tools/download to avoid
+- re-downloading large archives (e.g., gcc-15.1.0.tar.xz).
 
-Usage:
+# Usage:
   1. Make the script executable:
 ```bash
  chmod +x CloverAutoBuilder

@@ -41,7 +41,7 @@ xattr -dr com.apple.quarantine CloverAutoBuilder
 - The preparation is the same as for the previous tool.
 
 # Differences:
-- Does not remove or modify CloverBootloader
+- Does not remove or modify any files ni CloverBootloader
   
 # Homebrew (un)installer
 

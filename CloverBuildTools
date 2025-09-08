@@ -1,0 +1,52 @@
+#!/bin/bash
+# CloverBuildTools By chris1111 (modified)
+
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[1;33m"
+NC="\033[0m" # No Color
+
+echo -e "${GREEN}Starting CloverBuildTools... (expected CloverBootloader folder next to this script)${NC}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [[ ! -d "$SCRIPT_DIR/CloverBootloader" ]]; then
+    echo -e "${RED}❌ CloverBootloader folder not found next to this script!${NC}"
+    exit 1
+fi
+
+BuildTool="$SCRIPT_DIR/CloverBootloader/toolchain/tools/Download"
+
+if [[ -f $BuildTool/binutils-2.45.tar.xz && \
+      -f $BuildTool/cctools-986.tar.gz && \
+      -f $BuildTool/gcc-15.1.0.tar.xz && \
+      -f $BuildTool/gettext-0.22.4.tar.xz && \
+      -f $BuildTool/gmp-6.3.0.tar.xz && \
+      -f $BuildTool/isl-0.27.tar.xz && \
+      -f $BuildTool/mpc-1.3.1.tar.gz && \
+      -f $BuildTool/mpfr-4.2.2.tar.xz && \
+      -f $BuildTool/nasm-2.16.01.tar.xz ]]; then
+    echo -e "${GREEN}CloverBuildTools Exist ✅${NC}"
+    sleep 2
+else
+    if [[ -d "$BuildTool" ]]; then
+        echo -e "${YELLOW}⚠️ CloverBuildTools folder exists but some files are missing.${NC}"
+    else
+        echo -e "${RED}Some tools are missing 🚫 Downloading all...${NC}"
+    fi
+    mkdir -p "$BuildTool"
+    Temp="/private/tmp"
+    CloverBuildTools="CloverBuildTools.zip"
+    curl -L https://github.com/com-chris1111/CloverBuildTools/releases/download/V1/CloverBuildTools.zip -o "$Temp/$CloverBuildTools"
+    # unzip all
+    Tools="$Temp/CloverBuildTools"
+    ditto -x -k --sequesterRsrc --rsrc "$Temp/CloverBuildTools.zip" "$Temp"
+    sleep 1
+    cp -Rp "$Tools/"* "$BuildTool"
+    # remove temp files
+    sleep 1
+    rm -rf "$Temp/$CloverBuildTools" "$Tools"
+    echo -e "${GREEN}CloverBuildTools Ready ✅${NC}"
+fi
+
+echo -e "All files copied to: ${GREEN}$BuildTool${NC}"

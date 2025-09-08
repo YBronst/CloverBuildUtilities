@@ -1,10 +1,10 @@
 ================ CloverAutoBuilder v5 =================
-Purpose:
+# Purpose:
   Fully rebuilds the CloverBootloader repository while
   preserving files in toolchain/tools/download to avoid
   re-downloading large archives (e.g., gcc-15.1.0.tar.xz).
 
-Usage:
+# Usage:
   1. Make the script executable:
        chmod +x CloverAutoBuilder
   2. Remove from macOS quarantine
@@ -12,7 +12,7 @@ Usage:
   3. Run the script:
        ./CloverAutoBuilder
 
-What it does:
+# What it does:
   - Checks for Python (installs if needed)
   - Creates a symlink for python if missing
   - Updates pip and setuptools

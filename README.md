@@ -1,9 +1,9 @@
 # CloverAutoBuilder v5
 
 # Purpose:
-- Fully rebuilds the CloverBootloader repository while
-- preserving files in toolchain/tools/download to avoid
-- re-downloading large archives (e.g., gcc-15.1.0.tar.xz).
+- Fully rebuilds the CloverBootloader repository.
+- preserving files in toolchain/tools/download to avoid re-downloading large archives
+- (e.g., gcc-15.1.0.tar.xz).
 
 # Usage:
   1. Make the script executable:
@@ -19,22 +19,29 @@ xattr -dr com.apple.quarantine CloverAutoBuilder
 ./CloverAutoBuilder
 ```
 
-What it does:
-  - Checks for Python (installs if needed)
-  - Creates a symlink for python if missing
-  - Updates pip and setuptools
+# What it can do:
+  - Checks for Python (installs if needed);
+  - Creates a symlink for python if missing;
+  - Updates pip and setuptools;
   - If CloverBootloader exists:
        * Saves toolchain/tools/download to /private/tmp/downloadBackup
        * Deletes the old repository
-  - Clones a fresh CloverBootloader from GitHub
-  - Restores saved files back into toolchain/tools/download
-    OR downloads CloverBuildTools.zip if no backup exists
-  - Checks for all required build tools
-  - Builds BaseTools
-  - Automatically runs buildme
-  - Cleans up /private/tmp/downloadBackup after completion
+  - Clones a fresh CloverBootloader from GitHub;
+  - Restores saved files back into toolchain/tools/download or downloads CloverBuildTools.zip if no backup exists;
+  - Checks for all required build tools;
+  - Builds BaseTools;
+  - Automatically runs buildme;
+  - Cleans up /private/tmp/downloadBackup after completion.
 
+# CloverBuildTools Loads slowly loads open source tools that may have been lost during updates CloverBootloader
 
+# Usage:
+- Place it next to CloverBootloader and launch it and missing files will appear in `CloverBootloader/toolchain/tools/Download`
+- The preparation is the same as for the previous tool.
+
+# Differences:
+- Does not remove or modify CloverBootloader
+  
 # Homebrew (un)installer
 
 ## Install Homebrew (on macOS or Linux)

@@ -42,6 +42,23 @@ xattr -dr com.apple.quarantine CloverAutoBuilder
 
 # Differences:
 - Does not remove or modify any files ni CloverBootloader
+
+# MacFileHelper Quickly make scripts executable or remove quarantine from apps and installers on macOS.
+## Features:
+
+- Make scripts (`.sh`, `.py`, `.command`, or files with shebang) executable.
+- Remove quarantine from apps (`.app`) and installers (`.dmg`, `.pkg`, `.zip`).
+- Spinner animation and color-coded labels for easy feedback.
+- Safe folder handling: only one candidate file is processed.
+- Logs all actions to `~/Desktop/FileTool3.log`.
+
+## Usage:
+
+1. Make the script executable:
+
+```bash
+chmod +x "path to" MacFileHelper
+```
   
 # Homebrew (un)installer
 

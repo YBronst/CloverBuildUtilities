@@ -5,23 +5,26 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13   # Intel runner
+    runs-on: macos-13
     steps:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq slang
+          brew install gettext pkg-config glib jq
 
-      - name: Download source tarball
+      - name: Download source tarball and SHA256
         run: |
           curl -L https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2 -o mc-4.8.33.tar.bz2
           curl -L https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256 -o mc-4.8.33.sha256
-          tar -xjf mc-4.8.33.tar.bz2
-          mv mc-4.8.33 mc
 
       - name: Verify SHA256
         run: |
-          shasum -a 256 -c mc-4.8.33.sha256
+          grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
+
+      - name: Extract source
+        run: |
+          tar -xjf mc-4.8.33.tar.bz2
+          mv mc-4.8.33 mc
 
       - name: Configure
         working-directory: mc
@@ -56,9 +59,7 @@ jobs:
           hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
 
       - name: Compute SHA256
-        run: |
-          echo "SHA256 of mc-macos-intel.dmg:"
-          shasum -a 256 mc-macos-intel.dmg
+        run: shasum -a 256 mc-macos-intel.dmg
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

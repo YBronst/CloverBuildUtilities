@@ -1,4 +1,4 @@
-name: Build S-Lang + Midnight Commander (macOS Intel + DMG + SHA256)
+name: Build Midnight Commander with S-Lang (macOS Intel + DMG + SHA256)
 
 on:
   workflow_dispatch:
@@ -6,83 +6,56 @@ on:
 jobs:
   build:
     runs-on: macos-13
-
     steps:
-      # ----------------------------
-      # 1️⃣ Сборка и установка S-Lang
-      # ----------------------------
+      # ------------------------
+      # 1. Установка зависимостей
+      # ------------------------
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq automake autoconf libtool
+          brew install gettext pkg-config glib jq
 
-      - name: Download S-Lang source
+      # ------------------------
+      # 2. Сборка и установка S-Lang
+      # ------------------------
+      - name: Download and install S-Lang
         run: |
           curl -LO https://www.jedsoft.org/releases/slang/slang-2.3.2.tar.gz
-
-      - name: Extract S-Lang source
-        run: |
           tar -xzf slang-2.3.2.tar.gz
-          mv slang-2.3.2 slang
+          cd slang-2.3.2
+          ./configure --prefix=/usr/local
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          cd ..
+          # Проверим наличие библиотеки
+          ls -l /usr/local/lib/libslang.2.dylib
 
-      - name: Configure S-Lang
-        working-directory: slang
-        run: |
-          ./configure \
-            --prefix=/usr/local \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
-
-      - name: Build S-Lang
-        working-directory: slang
-        run: make -j$(sysctl -n hw.ncpu)
-
-      - name: Install S-Lang into staging dir
-        working-directory: slang
-        run: |
-          mkdir -p ../pkgroot_slang/usr/local
-          make install DESTDIR=$PWD/../pkgroot_slang
-
-      - name: Create S-Lang .pkg
-        run: |
-          pkgbuild \
-            --root pkgroot_slang \
-            --identifier org.s-lang \
-            --version "2.3.2" \
-            slang-macos-intel.pkg
-
-      - name: Create S-Lang .dmg
-        run: |
-          mkdir dmgdir_slang
-          mv slang-macos-intel.pkg dmgdir_slang/
-          hdiutil create -volname "S-Lang" -srcfolder dmgdir_slang -ov -format UDZO slang-macos-intel.dmg
-
-      - name: Upload S-Lang Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: slang-macos-intel-dmg
-          path: slang-macos-intel.dmg
-
-      # ----------------------------
-      # 2️⃣ Сборка Midnight Commander
-      # ----------------------------
-      - name: Install dependencies for MC
-        run: brew install slang
-
-      - name: Download MC source and checksum
+      # ------------------------
+      # 3. Скачивание исходников MC
+      # ------------------------
+      - name: Download Midnight Commander
         run: |
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
 
+      # ------------------------
+      # 4. Проверка SHA256
+      # ------------------------
       - name: Verify SHA256
         run: |
           grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
 
-      - name: Extract MC source
+      # ------------------------
+      # 5. Распаковка исходников MC
+      # ------------------------
+      - name: Extract source
         run: |
           tar -xjf mc-4.8.33.tar.bz2
           mv mc-4.8.33 mc
 
+      # ------------------------
+      # 6. Конфигурация и сборка MC
+      # ------------------------
       - name: Configure MC
         working-directory: mc
         run: |
@@ -95,30 +68,42 @@ jobs:
         working-directory: mc
         run: make -j$(sysctl -n hw.ncpu)
 
-      - name: Install MC into staging dir
+      # ------------------------
+      # 7. Установка MC в staging dir
+      # ------------------------
+      - name: Install into staging dir
         working-directory: mc
         run: |
-          mkdir -p ../pkgroot_mc/usr/local
-          make install DESTDIR=$PWD/../pkgroot_mc
+          mkdir -p ../pkgroot/usr/local
+          make install DESTDIR=$PWD/../pkgroot
 
-      - name: Create MC .pkg
+      # ------------------------
+      # 8. Создание .pkg
+      # ------------------------
+      - name: Create .pkg
         run: |
           pkgbuild \
-            --root pkgroot_mc \
+            --root pkgroot \
             --identifier org.midnightcommander.mc \
             --version "4.8.33" \
             mc-macos-intel.pkg
 
-      - name: Create MC .dmg
+      # ------------------------
+      # 9. Создание .dmg
+      # ------------------------
+      - name: Create .dmg
         run: |
-          mkdir dmgdir_mc
-          mv mc-macos-intel.pkg dmgdir_mc/
-          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir_mc -ov -format UDZO mc-macos-intel.dmg
+          mkdir dmgdir
+          mv mc-macos-intel.pkg dmgdir/
+          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
 
-      - name: Compute SHA256 of MC
+      # ------------------------
+      # 10. SHA256 и загрузка артефакта
+      # ------------------------
+      - name: Compute SHA256
         run: shasum -a 256 mc-macos-intel.dmg
 
-      - name: Upload MC Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: mc-macos-intel-dmg

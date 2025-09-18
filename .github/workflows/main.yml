@@ -7,22 +7,23 @@ jobs:
   build:
     runs-on: macos-13   # Intel runner
     steps:
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install gettext pkg-config glib jq
+
       - name: Get latest release info
         id: get_release
         run: |
           LATEST=$(curl -s https://api.github.com/repos/MidnightCommander/mc/releases/latest | jq -r .tag_name)
           echo "latest_tag=$LATEST" >> $GITHUB_ENV
+          echo "Latest release: $LATEST"
 
       - name: Download source tarball
         run: |
           curl -L https://github.com/MidnightCommander/mc/archive/refs/tags/${{ env.latest_tag }}.tar.gz -o mc.tar.gz
           tar -xzf mc.tar.gz
           mv mc-* mc
-
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install gettext pkg-config glib
 
       - name: Configure
         working-directory: mc

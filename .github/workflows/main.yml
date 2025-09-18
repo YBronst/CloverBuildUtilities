@@ -1,38 +1,36 @@
-name: Build Midnight Commander (macOS Intel + DMG + SHA256)
+name: Build Midnight Commander (macOS Intel + DMG + static S-Lang)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-13   # Intel runner
+    runs-on: macos-13
     steps:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq slang
+          brew install gettext pkg-config glib s-lang bzip2 xz
 
-      - name: Download source tarball and checksum
+      - name: Download Midnight Commander source
         run: |
-          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2
-          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
+          MC_VER=4.8.33
+          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-$MC_VER.tar.bz2
+          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-$MC_VER.sha256
+          shasum -a 256 -c mc-$MC_VER.sha256
+          tar -xjf mc-$MC_VER.tar.bz2
+          mv mc-$MC_VER mc
 
-      - name: Verify SHA256
-        run: |
-          grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
-
-      - name: Extract source
-        run: |
-          tar -xjf mc-4.8.33.tar.bz2
-          mv mc-4.8.33 mc
-
-      - name: Configure
+      - name: Configure with static S-Lang
         working-directory: mc
         run: |
           ./configure \
             --prefix=/usr/local \
+            --enable-static \
+            --disable-nls \
+            --with-slang=system \
             CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib"
+            LDFLAGS="-L/usr/local/lib -static"
 
       - name: Build
         working-directory: mc
@@ -59,9 +57,7 @@ jobs:
           hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
 
       - name: Compute SHA256
-        run: |
-          echo "SHA256 of mc-macos-intel.dmg:"
-          shasum -a 256 mc-macos-intel.dmg
+        run: shasum -a 256 mc-macos-intel.dmg
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

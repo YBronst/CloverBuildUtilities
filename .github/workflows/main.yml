@@ -6,9 +6,9 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13   # это Intel macOS runner (Ventura на Intel)
+    runs-on: macos-13   # Intel runner (Ventura)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -33,7 +33,7 @@ jobs:
           tar -czf mc-macos-intel.tar.gz -C dist .
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mc-macos-intel
           path: mc-macos-intel.tar.gz

@@ -10,18 +10,18 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq
+          brew install gettext pkg-config glib jq slang
 
-      - name: Download source tarball and SHA256
+      - name: Download source tarball
         run: |
-          curl -L -O https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.xz
-          curl -L -O https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
-          tar -xf mc-4.8.33.tar.xz
+          curl -L https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2 -o mc-4.8.33.tar.bz2
+          curl -L https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256 -o mc-4.8.33.sha256
+          tar -xjf mc-4.8.33.tar.bz2
           mv mc-4.8.33 mc
 
       - name: Verify SHA256
         run: |
-          grep "mc-4.8.33.tar.xz" mc-4.8.33.sha256 | shasum -a 256 -c
+          shasum -a 256 -c mc-4.8.33.sha256
 
       - name: Configure
         working-directory: mc

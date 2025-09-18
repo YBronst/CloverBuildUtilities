@@ -1,4 +1,4 @@
-name: Build Midnight Commander (macOS Intel + DMG)
+name: Build Midnight Commander (macOS Intel + DMG + SHA256)
 
 on:
   workflow_dispatch:
@@ -55,6 +55,12 @@ jobs:
           mkdir dmgdir
           mv mc-macos-intel.pkg dmgdir/
           hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
+
+      - name: Compute SHA256
+        run: |
+          echo "Midnight Commander version: ${{ env.latest_tag }}"
+          echo "SHA256 of mc-macos-intel.dmg:"
+          shasum -a 256 mc-macos-intel.dmg
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

@@ -1,4 +1,4 @@
-name: Build Midnight Commander (macOS Intel)
+name: Build Midnight Commander (macOS Intel + DMG)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13   # Intel runner (Ventura)
+    runs-on: macos-13   # Intel runner
     steps:
       - uses: actions/checkout@v4
 
@@ -15,9 +15,11 @@ jobs:
           brew update
           brew install autoconf automake libtool gettext pkg-config glib
 
+      - name: Bootstrap (generate configure)
+        run: autoreconf -fi
+
       - name: Configure
         run: |
-          ./autogen.sh
           ./configure \
             --prefix=/usr/local \
             CPPFLAGS="-I/usr/local/include" \
@@ -26,14 +28,27 @@ jobs:
       - name: Build
         run: make -j$(sysctl -n hw.ncpu)
 
-      - name: Package
+      - name: Install into staging dir
         run: |
-          mkdir dist
-          make install DESTDIR=$PWD/dist
-          tar -czf mc-macos-intel.tar.gz -C dist .
+          mkdir -p pkgroot/usr/local
+          make install DESTDIR=$PWD/pkgroot
+
+      - name: Create .pkg
+        run: |
+          pkgbuild \
+            --root pkgroot \
+            --identifier org.midnightcommander.mc \
+            --version "$(./src/mc --version | head -n1 | awk '{print $3}')" \
+            mc-macos-intel.pkg
+
+      - name: Create .dmg
+        run: |
+          mkdir dmgdir
+          mv mc-macos-intel.pkg dmgdir/
+          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mc-macos-intel
-          path: mc-macos-intel.tar.gz
+          name: mc-macos-intel-dmg
+          path: mc-macos-intel.dmg

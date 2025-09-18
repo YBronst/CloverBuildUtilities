@@ -1,38 +1,53 @@
-name: Build Midnight Commander (macOS Intel + DMG + static S-Lang)
+name: Build Midnight Commander (macOS Intel + Static + DMG + SHA256)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-13   # Intel runner
     steps:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib s-lang bzip2 xz
+          brew install gettext pkg-config glib jq
 
-      - name: Download Midnight Commander source
+      - name: Download source tarball and checksum
         run: |
-          MC_VER=4.8.33
-          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-$MC_VER.tar.bz2
-          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-$MC_VER.sha256
-          shasum -a 256 -c mc-$MC_VER.sha256
-          tar -xjf mc-$MC_VER.tar.bz2
-          mv mc-$MC_VER mc
+          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2
+          curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
 
-      - name: Configure with static S-Lang
+      - name: Verify SHA256
+        run: |
+          grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
+
+      - name: Extract source
+        run: |
+          tar -xjf mc-4.8.33.tar.bz2
+          mv mc-4.8.33 mc
+
+      - name: Download and build static S-Lang
+        run: |
+          curl -LO https://www.jedsoft.org/releases/slang/slang-2.3.2.tar.gz
+          tar -xzf slang-2.3.2.tar.gz
+          cd slang-2.3.2
+          ./configure --prefix=$PWD/install --disable-shared --enable-static
+          make -j$(sysctl -n hw.ncpu)
+          make install
+          echo "S-LANG_DIR=$PWD/install" >> $GITHUB_ENV
+
+      - name: Configure Midnight Commander statically
         working-directory: mc
         run: |
           ./configure \
             --prefix=/usr/local \
+            --with-slang=${{ env.S-LANG_DIR }} \
             --enable-static \
-            --disable-nls \
-            --with-slang=system \
-            CPPFLAGS="-I/usr/local/include" \
-            LDFLAGS="-L/usr/local/lib -static"
+            --disable-shared \
+            CPPFLAGS="-I${{ env.S-LANG_DIR }}/include -I/usr/local/include" \
+            LDFLAGS="-L${{ env.S-LANG_DIR }}/lib -L/usr/local/lib"
 
-      - name: Build
+      - name: Build Midnight Commander
         working-directory: mc
         run: make -j$(sysctl -n hw.ncpu)
 
@@ -57,7 +72,9 @@ jobs:
           hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
 
       - name: Compute SHA256
-        run: shasum -a 256 mc-macos-intel.dmg
+        run: |
+          echo "SHA256 of mc-macos-intel.dmg:"
+          shasum -a 256 mc-macos-intel.dmg
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

@@ -12,23 +12,20 @@ jobs:
           brew update
           brew install gettext pkg-config glib jq
 
-      - name: Get latest release info
+      - name: Get latest release tarball URL
         id: get_release
         run: |
-          echo "Checking jq version..."
-          jq --version
-          # получаем тег последнего релиза
-          LATEST=$(curl -s https://api.github.com/repos/MidnightCommander/mc/releases/latest | jq -r .tag_name)
-          if [ "$LATEST" = "null" ] || [ -z "$LATEST" ]; then
-            echo "Failed to get latest release tag!"
+          TARBALL_URL=$(curl -s https://api.github.com/repos/MidnightCommander/mc/releases/latest | jq -r .tarball_url)
+          if [ -z "$TARBALL_URL" ] || [ "$TARBALL_URL" = "null" ]; then
+            echo "Failed to get latest release tarball URL!"
             exit 1
           fi
-          echo "latest_tag=$LATEST" >> $GITHUB_ENV
-          echo "Latest release: $LATEST"
+          echo "tarball_url=$TARBALL_URL" >> $GITHUB_ENV
+          echo "Latest release tarball URL: $TARBALL_URL"
 
       - name: Download source tarball
         run: |
-          curl -L https://github.com/MidnightCommander/mc/archive/refs/tags/${{ env.latest_tag }}.tar.gz -o mc.tar.gz
+          curl -L ${{ env.tarball_url }} -o mc.tar.gz
           tar -xzf mc.tar.gz
           mv mc-* mc
 
@@ -55,7 +52,7 @@ jobs:
           pkgbuild \
             --root pkgroot \
             --identifier org.midnightcommander.mc \
-            --version "${{ env.latest_tag }}" \
+            --version "latest" \
             mc-macos-intel.pkg
 
       - name: Create .dmg
@@ -66,7 +63,6 @@ jobs:
 
       - name: Compute SHA256
         run: |
-          echo "Midnight Commander version: ${{ env.latest_tag }}"
           echo "SHA256 of mc-macos-intel.dmg:"
           shasum -a 256 mc-macos-intel.dmg
 

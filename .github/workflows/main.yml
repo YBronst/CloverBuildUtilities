@@ -1,4 +1,4 @@
-name: Build Midnight Commander (macOS Intel + DMG + SHA256)
+name: Build Midnight Commander 4.8.33 (macOS Intel + DMG + SHA256)
 
 on:
   workflow_dispatch:
@@ -10,24 +10,20 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq
+          brew install gettext pkg-config glib jq xz
 
-      - name: Get latest release tarball URL
-        id: get_release
+      - name: Download source tarball and SHA256
         run: |
-          TARBALL_URL=$(curl -s https://api.github.com/repos/MidnightCommander/mc/releases/latest | jq -r .tarball_url)
-          if [ -z "$TARBALL_URL" ] || [ "$TARBALL_URL" = "null" ]; then
-            echo "Failed to get latest release tarball URL!"
-            exit 1
-          fi
-          echo "tarball_url=$TARBALL_URL" >> $GITHUB_ENV
-          echo "Latest release tarball URL: $TARBALL_URL"
+          curl -L -O https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.xz
+          curl -L -O https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
 
-      - name: Download source tarball
+      - name: Verify SHA256
+        run: shasum -a 256 -c mc-4.8.33.sha256
+
+      - name: Extract source
         run: |
-          curl -L ${{ env.tarball_url }} -o mc.tar.gz
-          tar -xzf mc.tar.gz
-          mv mc-* mc
+          tar -xf mc-4.8.33.tar.xz
+          mv mc-4.8.33 mc
 
       - name: Configure
         working-directory: mc
@@ -52,22 +48,22 @@ jobs:
           pkgbuild \
             --root pkgroot \
             --identifier org.midnightcommander.mc \
-            --version "latest" \
+            --version "4.8.33" \
             mc-macos-intel.pkg
 
       - name: Create .dmg
         run: |
           mkdir dmgdir
           mv mc-macos-intel.pkg dmgdir/
-          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
+          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-4.8.33-macos-intel.dmg
 
-      - name: Compute SHA256
-        run: |
-          echo "SHA256 of mc-macos-intel.dmg:"
-          shasum -a 256 mc-macos-intel.dmg
+      - name: Compute SHA256 for DMG
+        run: shasum -a 256 mc-4.8.33-macos-intel.dmg > mc-4.8.33-macos-intel.dmg.sha256
 
-      - name: Upload Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mc-macos-intel-dmg
-          path: mc-macos-intel.dmg
+          name: mc-macos-intel
+          path: |
+            mc-4.8.33-macos-intel.dmg
+            mc-4.8.33-macos-intel.dmg.sha256

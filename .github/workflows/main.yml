@@ -10,16 +10,16 @@ jobs:
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq bzip2 slang
+          brew install gettext pkg-config glib jq slang
 
-      - name: Download source tarball
+      - name: Download source tarball and checksum
         run: |
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
 
       - name: Verify SHA256
         run: |
-          shasum -a 256 -c mc-4.8.33.sha256
+          grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
 
       - name: Extract source
         run: |
@@ -31,8 +31,8 @@ jobs:
         run: |
           ./configure \
             --prefix=/usr/local \
-            CPPFLAGS="-I/usr/local/include -I/usr/local/opt/slang/include -I/usr/local/opt/gettext/include" \
-            LDFLAGS="-L/usr/local/lib -L/usr/local/opt/slang/lib -L/usr/local/opt/gettext/lib"
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
 
       - name: Build
         working-directory: mc

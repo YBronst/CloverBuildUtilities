@@ -15,7 +15,14 @@ jobs:
       - name: Get latest release info
         id: get_release
         run: |
+          echo "Checking jq version..."
+          jq --version
+          # получаем тег последнего релиза
           LATEST=$(curl -s https://api.github.com/repos/MidnightCommander/mc/releases/latest | jq -r .tag_name)
+          if [ "$LATEST" = "null" ] || [ -z "$LATEST" ]; then
+            echo "Failed to get latest release tag!"
+            exit 1
+          fi
           echo "latest_tag=$LATEST" >> $GITHUB_ENV
           echo "Latest release: $LATEST"
 

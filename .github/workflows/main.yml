@@ -1,0 +1,39 @@
+name: Build Midnight Commander (macOS Intel)
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-13   # это Intel macOS runner (Ventura на Intel)
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install autoconf automake libtool gettext pkg-config glib
+
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure \
+            --prefix=/usr/local \
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
+
+      - name: Build
+        run: make -j$(sysctl -n hw.ncpu)
+
+      - name: Package
+        run: |
+          mkdir dist
+          make install DESTDIR=$PWD/dist
+          tar -czf mc-macos-intel.tar.gz -C dist .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mc-macos-intel
+          path: mc-macos-intel.tar.gz

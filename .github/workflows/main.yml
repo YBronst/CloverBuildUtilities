@@ -1,4 +1,4 @@
-name: Build Midnight Commander (macOS Intel + DMG + SHA256)
+name: Build S-Lang + Midnight Commander (macOS Intel + DMG + SHA256)
 
 on:
   workflow_dispatch:
@@ -8,12 +8,68 @@ jobs:
     runs-on: macos-13
 
     steps:
+      # ----------------------------
+      # 1️⃣ Сборка и установка S-Lang
+      # ----------------------------
       - name: Install dependencies
         run: |
           brew update
-          brew install gettext pkg-config glib jq slang
+          brew install gettext pkg-config glib jq automake autoconf libtool
 
-      - name: Download source tarball and checksum
+      - name: Download S-Lang source
+        run: |
+          curl -LO https://www.jedsoft.org/releases/slang/slang-2.3.2.tar.gz
+
+      - name: Extract S-Lang source
+        run: |
+          tar -xzf slang-2.3.2.tar.gz
+          mv slang-2.3.2 slang
+
+      - name: Configure S-Lang
+        working-directory: slang
+        run: |
+          ./configure \
+            --prefix=/usr/local \
+            CPPFLAGS="-I/usr/local/include" \
+            LDFLAGS="-L/usr/local/lib"
+
+      - name: Build S-Lang
+        working-directory: slang
+        run: make -j$(sysctl -n hw.ncpu)
+
+      - name: Install S-Lang into staging dir
+        working-directory: slang
+        run: |
+          mkdir -p ../pkgroot_slang/usr/local
+          make install DESTDIR=$PWD/../pkgroot_slang
+
+      - name: Create S-Lang .pkg
+        run: |
+          pkgbuild \
+            --root pkgroot_slang \
+            --identifier org.s-lang \
+            --version "2.3.2" \
+            slang-macos-intel.pkg
+
+      - name: Create S-Lang .dmg
+        run: |
+          mkdir dmgdir_slang
+          mv slang-macos-intel.pkg dmgdir_slang/
+          hdiutil create -volname "S-Lang" -srcfolder dmgdir_slang -ov -format UDZO slang-macos-intel.dmg
+
+      - name: Upload S-Lang Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slang-macos-intel-dmg
+          path: slang-macos-intel.dmg
+
+      # ----------------------------
+      # 2️⃣ Сборка Midnight Commander
+      # ----------------------------
+      - name: Install dependencies for MC
+        run: brew install slang
+
+      - name: Download MC source and checksum
         run: |
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.tar.bz2
           curl -LO https://ftp.osuosl.org/pub/midnightcommander/mc-4.8.33.sha256
@@ -22,12 +78,12 @@ jobs:
         run: |
           grep "mc-4.8.33.tar.bz2" mc-4.8.33.sha256 | shasum -a 256 -c
 
-      - name: Extract source
+      - name: Extract MC source
         run: |
           tar -xjf mc-4.8.33.tar.bz2
           mv mc-4.8.33 mc
 
-      - name: Configure
+      - name: Configure MC
         working-directory: mc
         run: |
           ./configure \
@@ -35,34 +91,34 @@ jobs:
             CPPFLAGS="-I/usr/local/include" \
             LDFLAGS="-L/usr/local/lib"
 
-      - name: Build
+      - name: Build MC
         working-directory: mc
         run: make -j$(sysctl -n hw.ncpu)
 
-      - name: Install into staging dir
+      - name: Install MC into staging dir
         working-directory: mc
         run: |
-          mkdir -p ../pkgroot/usr/local
-          make install DESTDIR=$PWD/../pkgroot
+          mkdir -p ../pkgroot_mc/usr/local
+          make install DESTDIR=$PWD/../pkgroot_mc
 
-      - name: Create .pkg
+      - name: Create MC .pkg
         run: |
           pkgbuild \
-            --root pkgroot \
+            --root pkgroot_mc \
             --identifier org.midnightcommander.mc \
             --version "4.8.33" \
             mc-macos-intel.pkg
 
-      - name: Create .dmg
+      - name: Create MC .dmg
         run: |
-          mkdir dmgdir
-          mv mc-macos-intel.pkg dmgdir/
-          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir -ov -format UDZO mc-macos-intel.dmg
+          mkdir dmgdir_mc
+          mv mc-macos-intel.pkg dmgdir_mc/
+          hdiutil create -volname "Midnight Commander" -srcfolder dmgdir_mc -ov -format UDZO mc-macos-intel.dmg
 
-      - name: Compute SHA256
+      - name: Compute SHA256 of MC
         run: shasum -a 256 mc-macos-intel.dmg
 
-      - name: Upload Artifact
+      - name: Upload MC Artifact
         uses: actions/upload-artifact@v4
         with:
           name: mc-macos-intel-dmg
